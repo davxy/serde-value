@@ -54,7 +54,7 @@ impl<'a> From<de::Unexpected<'a>> for Unexpected {
 }
 
 impl Unexpected {
-    pub fn to_unexpected<'a>(&'a self) -> de::Unexpected<'a> {
+    pub fn to_unexpected(& self) -> de::Unexpected<'_> {
         match *self {
             Unexpected::Bool(v) => de::Unexpected::Bool(v),
             Unexpected::Unsigned(v) => de::Unexpected::Unsigned(v),
@@ -313,7 +313,7 @@ pub struct ValueDeserializer<E> {
 impl<E> ValueDeserializer<E> {
     pub fn new(value: Value) -> Self {
         ValueDeserializer {
-            value: value,
+            value,
             error: Default::default(),
         }
     }
@@ -395,8 +395,8 @@ impl<'de, E> de::Deserializer<'de> for ValueDeserializer<E> where E: de::Error {
         };
 
         let d = EnumDeserializer {
-            variant: variant,
-            value: value,
+            variant,
+            value,
             error: Default::default(),
         };
         visitor.visit_enum(d)

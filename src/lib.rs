@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::convert::TryFrom;
 use serde::Deserialize;
 use ordered_float::OrderedFloat;
 
@@ -11,32 +12,46 @@ pub use ser::*;
 
 mod de;
 mod ser;
+mod misc;
+#[macro_use]
+mod macros;
 
 #[derive(Clone, Debug)]
 pub enum Value {
+    /// Boolean represents true or false.
     Bool(bool),
 
     U8(u8),
     U16(u16),
+    /// A 32-bit unsigned integer number.
     U32(u32),
+    /// A 64-bit unsigned integer number.
     U64(u64),
 
     I8(i8),
     I16(i16),
+    /// A 32-bit integer number.
     I32(i32),
+    /// A 64-bit integer number.
     I64(i64),
 
+    /// A 32-bit floating point number.
     F32(f32),
+    /// A 64-bit floating point number.
     F64(f64),
 
     Char(char),
+    /// An UTF-8 String.
     String(String),
 
     Unit,
     Option(Option<Box<Value>>),
     Newtype(Box<Value>),
+    /// A sequence of objects.
     Seq(Vec<Value>),
+    /// Map represents key-value pairs of objects.
     Map(BTreeMap<Value, Value>),
+    /// Binary extending Raw type represents a byte array.
     Bytes(Vec<u8>),
 }
 
@@ -125,6 +140,72 @@ impl Ord for Value {
 }
 
 impl Value {
+    pub fn get(&self, index: &Value) -> Option<&Value> {
+        match self {
+            Value::Map(map) => map.get(index),
+            _ => None,
+        }
+    }
+
+    pub fn as_u64(&self) -> Option<u64> {
+        match self {
+            Value::U64(val) => Some(*val),
+            Value::U32(val) => Some(*val as u64),
+            Value::U16(val) => Some(*val as u64),
+            Value::U8(val) => Some(*val as u64),
+            Value::I64(val) => u64::try_from(*val).ok(),
+            Value::I32(val) => u64::try_from(*val).ok(),
+            Value::I16(val) => u64::try_from(*val).ok(),
+            Value::I8(val) => u64::try_from(*val).ok(),
+            _ => None,
+        }
+    }
+
+    pub fn as_i64(&self) -> Option<i64> {
+        match self {
+            Value::U64(val) => i64::try_from(*val).ok(),
+            Value::U32(val) => Some(*val as i64),
+            Value::I32(val) => Some(*val as i64),
+            Value::U16(val) => Some(*val as i64),
+            Value::I16(val) => Some(*val as i64),
+            Value::U8(val) => Some(*val as i64),
+            Value::I8(val) => Some(*val as i64),
+            _ => None,
+        }
+    }
+
+    pub fn as_f64(&self) -> Option<f64> {
+        None
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::Bool(val) => Some(*val),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Value::String(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    pub fn as_seq(&self) -> Option<&Vec<Value>> {
+        match self {
+            Value::Seq(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    pub fn as_map(&self) -> Option<&BTreeMap<Value, Value>> {
+        match self {
+            Value::Map(val) => Some(val),
+            _ => None,
+        }
+    }
+
     fn discriminant(&self) -> usize {
         match *self {
             Value::Bool(..) => 0,
@@ -179,6 +260,7 @@ impl Value {
 }
 
 impl Eq for Value { }
+
 impl PartialOrd for Value {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         Some(self.cmp(rhs))
